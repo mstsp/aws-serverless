@@ -1,0 +1,56 @@
+service: serverless-project
+provider:
+  name: aws
+  runtime: nodejs10.x
+  stage: dev
+  region: eu-central-1
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - 'dynamodb:*'
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:879430108267:table/serverless-project-persons"
+functions:
+  getPerson:
+    handler: handler.getPerson
+    events:
+      - http:
+          path: persons/{id}
+          method: GET
+    
+
+  postPerson:
+    handler: handler.postPerson
+    events:
+      - http:
+          path: persons
+          method: POST
+
+  getPersons:
+    handler: handler.getPersons
+    events:
+      - http:
+          path: /persons
+          method: GET
+
+    resources:
+      Resources:
+        uploadBucket:
+          Type: AWS::S3::Bucket
+          Properties:
+            BucketName: ${self:service}-${self:provider.stage}-uploads
+
+        personsTable:
+          Type: AWS::DynamoDB::Table
+          Properties:
+            TableName: serverless-project-persons
+            AttributeDefinitions:
+              - AttributeName: id
+                AttributeType: S
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
