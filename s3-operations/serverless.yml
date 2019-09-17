@@ -1,0 +1,79 @@
+
+service: s3-operations-trigger
+provider:
+  name: aws
+  runtime: nodejs10.x
+  stage: dev
+  region: eu-central-1
+
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - 'dynamodb:*'
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:879430108267:table/imagesTest"
+
+    - Effect: "Allow"
+      Action:
+        - "s3:GetBucketNotification"
+        - "s3:PutBucketNotification"
+      Resource:
+        Fn::Join:
+          - ""
+          - - "arn:aws:s3:::s3-operations-trigger-de-serverlessdeploymentbuck-1ev4wbu1e35q1"
+
+plugins:
+ - serverless-plugin-existing-s3
+
+
+functions:
+  saveFile:
+    handler: handler.saveFile
+    events:
+      - existingS3:
+          bucket: s3-operations-trigger-de-serverlessdeploymentbuck-1ev4wbu1e35q1
+          events:
+            - s3:ObjectCreated:*
+          rules:
+            - prefix: images/flowers/
+            - suffix: .jpg
+
+  deleteFile:
+    handler: handler.deleteFile
+    events:
+      - existingS3:
+          bucket: s3-operations-trigger-de-serverlessdeploymentbuck-1ev4wbu1e35q1
+          events:
+            - s3:ObjectRemoved:*
+          rules:
+            - prefix: images/flowers/
+            - suffix: .jpg
+
+  getImages:
+    handler: handler.getImages
+    events:
+      - http:
+          path: /images
+          method: GET
+
+    resources:
+      Resources:
+        uploadBucket:
+          Type: AWS::S3::Bucket
+          Properties:
+            BucketName: s3-operations-trigger-de-serverlessdeploymentbuck-1ev4wbu1e35q1
+
+        imagesTable:
+          Type: AWS::DynamoDB::Table
+          Properties:
+            TableName: images
+            AttributeDefinitions:
+              - AttributeName: id
+                AttributeType: S
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
